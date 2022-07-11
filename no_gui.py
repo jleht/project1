@@ -357,20 +357,20 @@ class Spec:
             if file.endswith('.png'):
                 existing_imgs.append(file[:-3])
         for name in filenames:
+            found = False
             if name[:-3] in existing_imgs:
-                pass
+                continue
             else:
                 with open('./measurements/'+name) as readfile:
                     for cnt, line in enumerate(readfile):
                         if "wavelength,intensity" in line:
                             row_num = cnt
+                            found = True
+                if not found:continue
                 readfile.close
                 df = pd.read_csv('./measurements/'+name, skiprows=row_num)
-                start_val= "wavelength,intensity"
-                start_index = df.intensity[df.intensity == start_val].index.tolist()[0]
-                df1 = df.iloc[start_index:, :]
-                df1 = df1.reset_index(drop=True)
-                df1.plot().get_figure().savefig('./plot_images'+name[:-3]+'.png')
+                df.plot(figsize=(50,40), x='wavelength', y='intensity', ylim=(0,35000)).get_figure().savefig('./plot_images/'+name[:-4]+'.png')
+                plt.close()
 
     def search_params(self,):
         if self.falcon.is_online():
