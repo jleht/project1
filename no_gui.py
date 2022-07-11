@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from cProfile import label
 import os
 from datetime import datetime
 import logging
@@ -18,6 +19,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import libs_metrics
 from importlib import reload
+import matplotlib
 
 class Spec:
     def __init__(self, falcon:Falcon, tmc:Teensy, integrationTime: float = 0.03, integrationDelay: int = 0, nrAverages: int = 1, triggerMode: int = 1):
@@ -346,6 +348,11 @@ class Spec:
             logging.error('Falcon control box is offline.')
     
     def plot_all_as_img(self):
+        matplotlib.use('Agg')
+        font = {'family' : 'normal',
+                'weight' : 'bold',
+                'size' : 52}
+        plt.ioff
         filenames = []
         existing_imgs = []
         if not os.path.exists('./plot_images'):
@@ -369,9 +376,19 @@ class Spec:
                 if not found:continue
                 readfile.close
                 df = pd.read_csv('./measurements/'+name, skiprows=row_num)
-                df.plot(figsize=(50,40), x='wavelength', y='intensity', ylim=(0,35000)).get_figure().savefig('./plot_images/'+name[:-4]+'.png')
-                plt.close()
-
+                fig = plt.figure(figsize=(50,40))
+                plt.rc('xtick',labelsize=42)
+                plt.rc('ytick',labelsize=42)
+                plt.rc('axes', labelsize=52)
+                plt.xlabel('Wavelength')
+                plt.ylabel('Intensity')
+                plt.ylim((0,35000))
+                plt.plot(df['wavelength'], df['intensity'])
+                plt.savefig('./plot_images/'+name[:-4]+'.png')
+                plt.close(fig)
+                #df.plot(figsize=(50,40), x='wavelength', y='intensity', ylim=(0,35000)).get_figure().savefig('./plot_images/'+name[:-4]+'.png')
+        plt.ion()
+        matplotlib.use('TkAgg')
     def search_params(self,):
         if self.falcon.is_online():
 
@@ -449,12 +466,19 @@ class Spec:
             libs_metrics.single_group(self.current_intensities, self.count)
 
     def make_plot(self, data):
+        matplotlib.use('QtAgg')
         mngr = plt.get_current_fig_manager()
         geom = mngr.window.geometry()
         x,y,dx,dy = geom.getRect()
         mngr.window.setGeometry(940,520,600,400)
         plt.clf()
         plt.ylim(0,35000)
+        plt.rcParams["figure.figsize"] = 12,10
+        plt.rc('xtick',labelsize=4)
+        plt.rc('ytick',labelsize=4)
+        plt.rc('axes', labelsize=2)
+        plt.xticks(fontsize=10)
+        plt.yticks(fontsize=10)
         plt.plot(data[0],data[1])
         plt.pause(0.001)
         plt.show()
