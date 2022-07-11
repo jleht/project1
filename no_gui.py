@@ -545,6 +545,8 @@ if __name__ == '__main__':
                 #sp.get_metrics()
             elif input_stream == 'qspre_search':
                 sp.search_params()
+            elif input_stream == 'plot':
+                sp.plot_all_as_img()
             else:
                 output = []
                 msg = 'Unknown command: {}'.format(input_stream)
