@@ -360,7 +360,12 @@ class Spec:
             if name[:-3] in existing_imgs:
                 pass
             else:
-                df = pd.read_csv('./measurements/'+name)
+                with open('./measurements/'+name) as readfile:
+                    for cnt, line in enumerate(readfile):
+                        if "wavelength,intensity" in line:
+                            row_num = cnt
+                readfile.close
+                df = pd.read_csv('./measurements/'+name, skiprows=row_num)
                 start_val= "wavelength,intensity"
                 start_index = df.A[df.A == start_val].index.tolist()[0]
                 df1 = df.iloc[start_index:, :]
