@@ -345,6 +345,28 @@ class Spec:
         else:
             logging.error('Falcon control box is offline.')
     
+    def plot_all_as_img(self):
+        filenames = []
+        existing_imgs = []
+        if not os.path.exists('./plot_images'):
+            os.makedirs('./plot_images')
+        for file in os.listdir('./measurements'):
+            if file.endswith('.csv'):
+                filenames.append(file)
+        for file in os.listdir('./plot_images'):
+            if file.endswith('.png'):
+                existing_imgs.append(file[:-3])
+        for name in filenames:
+            if name[:-3] in existing_imgs:
+                pass
+            else:
+                df = pd.read_csv('./measurements/'+name)
+                start_val= "wavelength,intensity"
+                start_index = df.A[df.A == start_val].index.tolist()[0]
+                df1 = df.iloc[start_index:, :]
+                df1 = df1.reset_index(drop=True)
+                df1.plot().get_figure().savefig('./plot_images'+name[:-3]+'.png')
+
     def search_params(self,):
         if self.falcon.is_online():
 
