@@ -367,7 +367,7 @@ class Spec:
                 readfile.close
                 df = pd.read_csv('./measurements/'+name, skiprows=row_num)
                 start_val= "wavelength,intensity"
-                start_index = df.A[df.A == start_val].index.tolist()[0]
+                start_index = df.intensity[df.intensity == start_val].index.tolist()[0]
                 df1 = df.iloc[start_index:, :]
                 df1 = df1.reset_index(drop=True)
                 df1.plot().get_figure().savefig('./plot_images'+name[:-3]+'.png')
