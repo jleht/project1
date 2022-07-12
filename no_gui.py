@@ -134,8 +134,8 @@ class Spec:
                     df.to_csv(filepath2, index=False)
 
                 time.sleep(0.001)
-            #self.make_plot([values['wavelength'],values['intensity']])
-            self.make_plot([values['wavelength'],self.highest_intensity])
+            self.make_plot([values['wavelength'],values['intensity']])
+            #self.make_plot([values['wavelength'],self.highest_intensity])
         else:
             logging.error('Falcon control box is offline.')
     
@@ -382,13 +382,13 @@ class Spec:
                 plt.rc('axes', labelsize=52)
                 plt.xlabel('Wavelength')
                 plt.ylabel('Intensity')
-                plt.ylim((0,35000))
+                plt.ylim((0,60000))
                 plt.plot(df['wavelength'], df['intensity'])
                 plt.savefig('./plot_images/'+name[:-4]+'.png')
                 plt.close(fig)
                 #df.plot(figsize=(50,40), x='wavelength', y='intensity', ylim=(0,35000)).get_figure().savefig('./plot_images/'+name[:-4]+'.png')
         plt.ion()
-        matplotlib.use('TkAgg')
+        matplotlib.use('QtAgg')
     def search_params(self,):
         if self.falcon.is_online():
 
@@ -472,7 +472,7 @@ class Spec:
         x,y,dx,dy = geom.getRect()
         mngr.window.setGeometry(940,520,600,400)
         plt.clf()
-        plt.ylim(0,35000)
+        plt.ylim(0,60000)
         plt.rcParams["figure.figsize"] = 12,10
         plt.rc('xtick',labelsize=4)
         plt.rc('ytick',labelsize=4)
