@@ -20,6 +20,7 @@ import numpy as np
 import libs_metrics
 from importlib import reload
 import matplotlib
+import plotting
 
 class Spec:
     def __init__(self, falcon:Falcon, tmc:Teensy, integrationTime: float = 0.03, integrationDelay: int = 0, nrAverages: int = 1, triggerMode: int = 1):
@@ -389,6 +390,7 @@ class Spec:
                 #df.plot(figsize=(50,40), x='wavelength', y='intensity', ylim=(0,35000)).get_figure().savefig('./plot_images/'+name[:-4]+'.png')
         plt.ion()
         matplotlib.use('QtAgg')
+
     def search_params(self,):
         if self.falcon.is_online():
 
@@ -483,6 +485,9 @@ class Spec:
         plt.pause(0.001)
         plt.show()
 
+    def plot_selected(self):
+        plotting.plot_selected()
+
 if __name__ == '__main__':
     level = logging.INFO
     fmt = '[ %(asctime)s :: %(levelname)s ] %(message)s'
@@ -576,6 +581,8 @@ if __name__ == '__main__':
                 sp.search_params()
             elif input_stream == 'plot':
                 sp.plot_all_as_img()
+            elif input_stream == 'plot selected':
+                sp.plot_selected()
             else:
                 output = []
                 msg = 'Unknown command: {}'.format(input_stream)
