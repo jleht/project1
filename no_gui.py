@@ -56,7 +56,7 @@ class Spec:
 
             self.csvHeader()
             time.sleep(0.1)
-            self.falcon.sendCmd('dfreq 10')
+            self.falcon.sendCmd('dfreq 5')
             self.falcon.sendCmd('qsdelay 201')
 
             plt.ion()
@@ -350,9 +350,6 @@ class Spec:
     
     def plot_all_as_img(self):
         matplotlib.use('Agg')
-        font = {'family' : 'normal',
-                'weight' : 'bold',
-                'size' : 52}
         plt.ioff
         filenames = []
         existing_imgs = []
