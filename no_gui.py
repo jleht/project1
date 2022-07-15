@@ -140,6 +140,14 @@ class Spec:
         else:
             logging.error('Falcon control box is offline.')
     
+    def save_to_csv(self, data, scans):
+        dtnow = datetime.now().strftime('%Y-%m-%d-%H_%M_%S_%f')
+        filepath = '{}/{}_{:04d}.csv'.format(self.savePath,dtnow, scans)
+        f = open(filepath,'wb')
+        f.write(self.header_text)
+        f.close()
+        data.to_csv(filepath, index=False, mode='a')
+
     def measureDarkness(self, count:int = 1):
         results = []
         ret = spec.AVS_PrepareMeasure(self.spec_handle, self.measconfig)
@@ -393,67 +401,78 @@ class Spec:
 
             hiIntensity = 0
             self.falcon.sendCmd('QSPRE 0')
+            self.measconfig.m_IntegrationDelay = 0
             presync = 0
-            
+            delay = 0
             count = 3
             # Sending a command to the wanted ammount + 5 (q-switch requires this)
             self.falcon.sendCmd('burst {:d}'.format(count+5))
+            while delay < 30:
+                while presync < 20:
+                    avg_intensity = 0
+                    ret = spec.AVS_PrepareMeasure(self.spec_handle, self.measconfig)
+                    scans = 0
+                    scanning = True
+                    fired = False
+                    while scanning:
+                        logging.debug('Starting measurement')
+                        ret = spec.AVS_Measure(self.spec_handle, 0, 1)
+                        dataready = False
+                        time.sleep(0.01)
+                        if not fired:
+                            self.falcon.sendCmd('fire')
+                            fired = True
 
-            while presync < 33:
-                avg_intensity = 0
-                ret = spec.AVS_PrepareMeasure(self.spec_handle, self.measconfig)
-                scans = 0
-                scanning = True
-                fired = False
-                while scanning:
-                    logging.debug('Starting measurement')
-                    ret = spec.AVS_Measure(self.spec_handle, 0, 1)
-                    dataready = False
-                    time.sleep(0.01)
-                    if not fired:
-                        self.falcon.sendCmd('fire')
-                        fired = True
+                        while dataready == False:
+                            dataready = (spec.AVS_PollScan(self.spec_handle) == True)
+                            time.sleep(0.001)
+                        if dataready == True:
+                            scans = scans + 1
+                            if scans >= count:
+                                scanning = False
 
-                    while dataready == False:
-                        dataready = (spec.AVS_PollScan(self.spec_handle) == True)
+                            logging.debug('Data measured')
+                            ret = spec.AVS_GetScopeData(self.spec_handle)
+                            x = 0
+                            values = {'wavelength': [], 'intensity': []}
+
+                            while (x < self.pixels):
+                                values['wavelength'].append(round(self.wavelength[x], 4))
+                                values['intensity'].append(float(ret[1][x]))
+                                x += 1
+
+                            df = pd.DataFrame(data=values)
+                            
+                            self.current_intensities.append(df['intensity'])
+
+                            avg_intensity += df['intensity'].max()
+
+                            self.save_to_csv(df,scans)
+
                         time.sleep(0.001)
-                    if dataready == True:
-                        scans = scans + 1
-                        if scans >= count:
-                            scanning = False
 
-                        logging.debug('Data measured')
-                        ret = spec.AVS_GetScopeData(self.spec_handle)
-                        x = 0
-                        values = {'wavelength': [], 'intensity': []}
+                    avg_intensity = avg_intensity/count
+                    self.make_plot([values['wavelength'],values['intensity']])
 
-                        while (x < self.pixels):
-                            values['wavelength'].append(round(self.wavelength[x], 4))
-                            values['intensity'].append(float(ret[1][x]))
-                            x += 1
+                    if hiIntensity<avg_intensity:
+                        hiIntensity = avg_intensity
+                        highest_presync = presync
+                        highest_delay = delay
+                    logging.info('\n\tAvg. intensity: {:0.2f}\tHi intensity: {:0.2f}'.format(avg_intensity,hiIntensity))
 
-                        df = pd.DataFrame(data=values)
-                        
-                        self.current_intensities.append(df['intensity'])
-
-                        avg_intensity += df['intensity'].max()
-
-
-                    time.sleep(0.001)
-
-                avg_intensity = avg_intensity/count
-                self.make_plot([values['wavelength'],values['intensity']])
-
-                if hiIntensity<avg_intensity:
-                    hiIntensity = avg_intensity
-                    best_presync = presync
-                logging.info('\n\tAvg. intensity: {:0.2f}\tHi intensity: {:0.2f}'.format(avg_intensity,hiIntensity))
-
-                self.tmc.move_axis('x-100')                
-                presync += 1
-                self.falcon.sendCmd('QSPRE {}'.format(presync))
-                time.sleep(0.01)
-            print('Highest intensity presync {}'.format(best_presync))
+                    self.tmc.move_axis('x-75')                
+                    presync += 1
+                    self.falcon.sendCmd('QSPRE {}'.format(presync))
+                    time.sleep(0.01)
+                    self.csvHeader()
+                    print(self.header_text.decode())
+                    time.sleep(0.01)
+                delay += 1
+                self.measconfig.m_IntegrationDelay = delay
+                if delay < 50: presync = 0
+            print('Highest intensity presync: {}, delay: {}'.format(highest_presync, highest_delay))
+            self.falcon.sendCmd('QSPRE 1')
+            self.measconfig.m_IntegrationDelay = 0
         else:
             logging.error('Falcon control box is offline.')
 
@@ -574,7 +593,7 @@ if __name__ == '__main__':
             elif input_stream == 'autofocus':
                 sp.autofocus()
                 #sp.get_metrics()
-            elif input_stream == 'qspre_search':
+            elif input_stream == 'param_search':
                 sp.search_params()
             elif input_stream == 'plot':
                 sp.plot_all_as_img()
