@@ -119,7 +119,7 @@ class Spec:
 
                     df = pd.DataFrame(data=values)
 
-                    self.current_intensities.append(df['intensity'])
+                    #self.current_intensities.append(df['intensity'])
                     if int(df['intensity'].max()) > int(self.highest_intensity.max()):
                         self.highest_intensity = df['intensity']
 
@@ -405,7 +405,7 @@ class Spec:
             presync = 0
             delay = 0
             count = 3
-            # Sending a command to the wanted ammount + 5 (q-switch requires this)
+            # Sending a command to the wanted amount + 5 (q-switch requires this)
             self.falcon.sendCmd('burst {:d}'.format(count+5))
             while delay < 30:
                 while presync < 20:
@@ -443,8 +443,6 @@ class Spec:
 
                             df = pd.DataFrame(data=values)
                             
-                            self.current_intensities.append(df['intensity'])
-
                             avg_intensity += df['intensity'].max()
 
                             self.save_to_csv(df,scans)
@@ -469,12 +467,108 @@ class Spec:
                     time.sleep(0.01)
                 delay += 1
                 self.measconfig.m_IntegrationDelay = delay
-                if delay < 50: presync = 0
+                self.falcon.sendCmd('QSPRE 0')
+                presync = 0
             print('Highest intensity presync: {}, delay: {}'.format(highest_presync, highest_delay))
             self.falcon.sendCmd('QSPRE 1')
             self.measconfig.m_IntegrationDelay = 0
         else:
             logging.error('Falcon control box is offline.')
+
+    def z_axis_test(self, start):
+        if self.falcon.is_online():
+            self.tmc.move_axis('z0')
+            self.tmc.move_axis('z-{}'.format(start))
+            current_step = 0
+            current_step += start
+            intensity = 0
+            count = 3
+            # Sending a command to the wanted amount + 5 (q-switch requires this)
+            self.falcon.sendCmd('burst {:d}'.format(count+5))
+
+            while intensity < 1000:
+                ret = spec.AVS_PrepareMeasure(self.spec_handle, self.measconfig)
+                scans = 0
+                scanning = True
+                fired = False
+                while scanning:
+                    logging.debug('Starting measurement')
+                    ret = spec.AVS_Measure(self.spec_handle, 0, 1)
+                    dataready = False
+                    time.sleep(0.01)
+                    if not fired:
+                        self.falcon.sendCmd('fire')
+                        fired = True
+
+                    while dataready == False:
+                        dataready = (spec.AVS_PollScan(self.spec_handle) == True)
+                        time.sleep(0.001)
+                    if dataready == True:
+                        scans = scans + 1
+                        if scans >= count:
+                            scanning = False
+
+                        logging.debug('Data measured')
+                        ret = spec.AVS_GetScopeData(self.spec_handle)
+                        x = 0
+                        values = {'wavelength': [], 'intensity': []}
+
+                        while (x < self.pixels):
+                            values['wavelength'].append(round(self.wavelength[x], 4))
+                            values['intensity'].append(float(ret[1][x]))
+                            x += 1
+
+                        df = pd.DataFrame(data=values)
+                        
+                        intensity = df['intensity'].max()
+                    time.sleep(0.001)
+                self.tmc.move_axis('x-25')                
+                self.tmc.move_axis('z-200')
+                current_step += 200
+
+            self.tmc.move_axis('x-100')
+            while intensity > 1000:
+                ret = spec.AVS_PrepareMeasure(self.spec_handle, self.measconfig)
+                scans = 0
+                scanning = True
+                fired = False
+                intensity = 0
+                while scanning:
+                    logging.debug('Starting measurement')
+                    ret = spec.AVS_Measure(self.spec_handle, 0, 1)
+                    dataready = False
+                    time.sleep(0.01)
+                    if not fired:
+                        self.falcon.sendCmd('fire')
+                        fired = True
+
+                    while dataready == False:
+                        dataready = (spec.AVS_PollScan(self.spec_handle) == True)
+                        time.sleep(0.001)
+                    if dataready == True:
+                        scans = scans + 1
+                        if scans >= count:
+                            scanning = False
+
+                        logging.debug('Data measured')
+                        ret = spec.AVS_GetScopeData(self.spec_handle)
+                        x = 0
+                        values = {'wavelength': [], 'intensity': [], 'current_step': []}
+
+                        while (x < self.pixels):
+                            values['wavelength'].append(round(self.wavelength[x], 4))
+                            values['intensity'].append(float(ret[1][x]))
+                            x += 1
+                        values['current_step'] = -current_step
+                        df = pd.DataFrame(data=values)
+                        
+                        intensity = df['intensity'].max()
+                        self.save_to_csv(df,scans)
+
+                    time.sleep(0.001)
+                self.tmc.move_axis('x-100')                
+                self.tmc.move_axis('z-25')
+                current_step += 25
 
     def get_metrics(self):
         reload(libs_metrics)
@@ -545,7 +639,7 @@ if __name__ == '__main__':
                     sp.count = int(meas_count)
 
                 sp.startMeasurement(sp.count)
-                sp.get_metrics()
+                #sp.get_metrics()
             elif input_stream == 'dark':
                 sp.configureSpec(triggerMode=0)
                 sp.csvHeader()
@@ -569,7 +663,7 @@ if __name__ == '__main__':
                     count = int(count)
                 sp.count = shots
                 sp.grid(count,shots)
-                sp.get_metrics()
+                #sp.get_metrics()
             elif input_stream[0:13] == 'darknessbatch':
                 sp.configureSpec(triggerMode=0)
                 count = input_stream[13:]
@@ -599,6 +693,8 @@ if __name__ == '__main__':
                 sp.plot_all_as_img()
             elif input_stream == 'plot selected':
                 sp.plot_selected()
+            elif input_stream[0:6] == 'z-test':
+                sp.z_axis_test(input_stream[8:])
             else:
                 output = []
                 msg = 'Unknown command: {}'.format(input_stream)

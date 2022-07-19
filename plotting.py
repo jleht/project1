@@ -30,7 +30,7 @@ def plot_selected():
         plt.xlabel('Wavelength')
         plt.ylabel('Intensity')
         plt.ylim((0,60000))
-        plt.plot(df['wavelength'], df['intensity'], label=name.rsplit('/', 1)[-1])
+        plt.plot(df['wavelength'], df['intensity'], label=name.rsplit('/', 1)[-1], alpha=0.5)
         plt.legend(loc='upper right')
 
     plt.show()
