@@ -478,9 +478,11 @@ class Spec:
     def z_axis_test(self, start):
         if self.falcon.is_online():
             self.tmc.move_axis('z0')
-            self.tmc.move_axis('z-{}'.format(start))
+            start = int(start)
             current_step = 0
-            current_step += start
+            if start != 0:
+                current_step += start
+                self.tmc.move_axis('z-{}'.format(start))
             intensity = 0
             count = 3
             # Sending a command to the wanted amount + 5 (q-switch requires this)
@@ -519,15 +521,17 @@ class Spec:
                             x += 1
 
                         df = pd.DataFrame(data=values)
-                        
+                        logging.info('\nHi intensity: {:0.2f}\tCurrent step: {}'.format(df['intensity'].max(), current_step))
+
                         intensity = df['intensity'].max()
                     time.sleep(0.001)
                 self.tmc.move_axis('x-25')                
-                self.tmc.move_axis('z-200')
-                current_step += 200
+                self.tmc.move_axis('z-800')
+                current_step += 800
 
             self.tmc.move_axis('x-100')
-            while intensity > 1000:
+            measuring = True
+            while measuring:
                 ret = spec.AVS_PrepareMeasure(self.spec_handle, self.measconfig)
                 scans = 0
                 scanning = True
@@ -561,14 +565,16 @@ class Spec:
                             x += 1
                         values['current_step'] = -current_step
                         df = pd.DataFrame(data=values)
-                        
+                        logging.info('\nHi intensity: {:0.2f}\tCurrent step: {}'.format(df['intensity'].max(), current_step))
+
                         intensity = df['intensity'].max()
                         self.save_to_csv(df,scans)
 
                     time.sleep(0.001)
+                if intensity+50 < 1100:measuring = False
                 self.tmc.move_axis('x-100')                
-                self.tmc.move_axis('z-25')
-                current_step += 25
+                self.tmc.move_axis('z-50')
+                current_step += 50
 
     def get_metrics(self):
         reload(libs_metrics)
@@ -694,7 +700,7 @@ if __name__ == '__main__':
             elif input_stream == 'plot selected':
                 sp.plot_selected()
             elif input_stream[0:6] == 'z-test':
-                sp.z_axis_test(input_stream[8:])
+                sp.z_axis_test(input_stream[7:])
             else:
                 output = []
                 msg = 'Unknown command: {}'.format(input_stream)
