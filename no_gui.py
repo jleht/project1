@@ -21,6 +21,17 @@ import libs_metrics
 from importlib import reload
 import matplotlib
 import plotting
+import linecache
+import sys
+
+def PrintException():
+    exc_type, exc_obj, tb = sys.exc_info()
+    f = tb.tb_frame
+    lineno = tb.tb_lineno
+    filename = f.f_code.co_filename
+    linecache.checkcache(filename)
+    line = linecache.getline(filename, lineno, f.f_globals)
+    print ('EXCEPTION IN ({}, LINE {} "{}"): {}'.format(filename, lineno, line.strip(), exc_obj))
 
 class Spec:
     def __init__(self, falcon:Falcon, tmc:Teensy, integrationTime: float = 0.03, integrationDelay: int = 0, nrAverages: int = 1, triggerMode: int = 1):
@@ -525,9 +536,9 @@ class Spec:
 
                         intensity = df['intensity'].max()
                     time.sleep(0.001)
-                self.tmc.move_axis('x-25')                
-                self.tmc.move_axis('z-800')
-                current_step += 800
+                self.tmc.move_axis('x-10')                
+                self.tmc.move_axis('z-1000')
+                current_step += 1000
 
             self.tmc.move_axis('x-100')
             measuring = True
@@ -572,7 +583,7 @@ class Spec:
 
                     time.sleep(0.001)
                 if intensity+50 < 1100:measuring = False
-                self.tmc.move_axis('x-100')                
+                self.tmc.move_axis('x-80')                
                 self.tmc.move_axis('z-50')
                 current_step += 50
 
@@ -714,3 +725,4 @@ if __name__ == '__main__':
                 logging.error('Keyboard interrupt')
             else:
                 logging.error(b)
+                PrintException()
